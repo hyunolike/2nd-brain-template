@@ -10,6 +10,7 @@ tags:
   - compliance
 related:
   - 002-data-sourcing.md
+  - 003-travel-aviation-domain.md
 ---
 
 # 보험 인수심사 도메인 적용
