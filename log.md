@@ -74,3 +74,22 @@
 - Correction: the immediately preceding lint entry reports 27 source references, but the measured canonical frontmatter total is 30.
 - Unchanged measurements: 17 claim-level markers, 33 canonical links, 8 canonical pages, and 0 lint errors or warnings.
 - Updated: `log.md` only; no raw or canonical page was changed.
+
+## [2026-07-30] create | Orca ADE (LLM Wiki 컴파일 PoC)
+
+- Evidence: 두 개의 미컴파일 raw 소스(`raw/web/stablyai...orca...md` web 캡처, `raw/youtube/📺 Orca Is the Free Cursor Killer...md` 리뷰)가 "Orca"를 중심 주제로 다뤄 2-소스 임계값을 충족. 원본은 수정하지 않음.
+- Created: `entities/orca.md` (첫 entity 페이지; 이전까지 Entities 섹션은 비어 있었음).
+- Updated: `index.md` (Entities 항목 추가, 총계 8 → 9), `log.md`.
+- Navigation: `[[knowledge-tool-roles]]`, `[[llm-wiki]]` 두 개의 유효·비자기 canonical 링크로 연결.
+- Provenance: 4개 claim-level 마커가 모두 frontmatter `sources`에 등재된 raw 경로로 해석됨.
+- Taxonomy: 기존 등록 태그 `automation`, `workflow`만 사용(신규 태그 도입 없음).
+- Quality: `confidence: medium` — 핵심 사실은 2소스 교차 검증되나 팀 배경·한계는 단일(YouTube) 소스이고 제품 변화가 빨라 신선도 확인이 필요.
+
+## [2026-07-30] lint | 0 issues found (Orca PoC)
+
+- Canonical pages: 9 total (1 entity, 5 concepts, 1 comparison, 2 queries); `entities/orca.md`의 필수 frontmatter 9개 필드·type·날짜·confidence·contestation·contradictions 모두 유효.
+- Navigation: `index.md` 총계 9가 파일시스템 canonical 수와 일치; orca 페이지의 아웃바운드 링크 2개(`[[knowledge-tool-roles]]`, `[[llm-wiki]]`)가 모두 활성 canonical로 해석, broken/self-link 없음.
+- Provenance: claim-level 마커 4개가 모두 frontmatter `sources`의 실존 raw 경로로 해석됨.
+- Taxonomy: 사용 태그 2개(`automation`, `workflow`) 모두 SCHEMA 등록 태그.
+- Formatting: UTF-8, LF only(CR 0), 최종 개행 존재, BOM 없음, 46줄(200줄 임계값 이하).
+- Raw integrity: raw 소스는 열람만 하고 변경하지 않음.
