@@ -1,0 +1,355 @@
+<title>LLM Wiki 컴파일 = 빌드 파이프라인</title>
+<style>
+  :root {
+    --paper: #f3f4f7;
+    --surface: #ffffff;
+    --surface-2: #eceef2;
+    --ink: #171a21;
+    --ink-soft: #4a505c;
+    --ink-faint: #79808d;
+    --line: #d8dce3;
+    --line-strong: #c2c8d2;
+    --accent: #5b3df5;        /* compile throughline */
+    --accent-soft: #ede9ff;
+    --src: #2563a8;           /* source / blue */
+    --src-soft: #e2edf8;
+    --pass: #1f8a4c;          /* build pass / green */
+    --pass-soft: #e0f2e6;
+    --warn: #b26a00;          /* lint / amber */
+    --warn-soft: #fbeeda;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0e1016; --surface: #171a22; --surface-2: #1e222c;
+      --ink: #e9ebf0; --ink-soft: #a8aebc; --ink-faint: #767d8c;
+      --line: #2a2f3a; --line-strong: #363c48;
+      --accent: #9b86ff; --accent-soft: #241d3f;
+      --src: #6fa8e0; --src-soft: #16273a;
+      --pass: #5ec27f; --pass-soft: #122a1c;
+      --warn: #e0a24d; --warn-soft: #2e2413;
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #f3f4f7; --surface: #ffffff; --surface-2: #eceef2;
+    --ink: #171a21; --ink-soft: #4a505c; --ink-faint: #79808d;
+    --line: #d8dce3; --line-strong: #c2c8d2;
+    --accent: #5b3df5; --accent-soft: #ede9ff;
+    --src: #2563a8; --src-soft: #e2edf8;
+    --pass: #1f8a4c; --pass-soft: #e0f2e6;
+    --warn: #b26a00; --warn-soft: #fbeeda;
+  }
+  :root[data-theme="dark"] {
+    --paper: #0e1016; --surface: #171a22; --surface-2: #1e222c;
+    --ink: #e9ebf0; --ink-soft: #a8aebc; --ink-faint: #767d8c;
+    --line: #2a2f3a; --line-strong: #363c48;
+    --accent: #9b86ff; --accent-soft: #241d3f;
+    --src: #6fa8e0; --src-soft: #16273a;
+    --pass: #5ec27f; --pass-soft: #122a1c;
+    --warn: #e0a24d; --warn-soft: #2e2413;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 56px 24px 80px; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  h1 {
+    font-family: var(--mono); font-weight: 700; font-size: clamp(28px, 5vw, 42px);
+    line-height: 1.12; letter-spacing: -.01em; margin: 12px 0 14px; text-wrap: balance;
+  }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 62ch; margin: 0; }
+
+  section { margin-top: 52px; }
+  h2 {
+    font-family: var(--mono); font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; margin: 0 0 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2::before {
+    content: ""; width: 22px; height: 2px; background: var(--accent); border-radius: 2px;
+  }
+  h3 { font-size: 17px; margin: 0 0 8px; letter-spacing: -.01em; }
+  p { margin: 0 0 12px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 24px;
+  }
+
+  /* thesis compare */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .compare .card { border-top: 3px solid var(--line-strong); }
+  .compare .rag { border-top-color: var(--src); }
+  .compare .wiki { border-top-color: var(--pass); }
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; letter-spacing: .04em; margin-bottom: 10px;
+  }
+  .tag.src { background: var(--src-soft); color: var(--src); }
+  .tag.pass { background: var(--pass-soft); color: var(--pass); }
+  .compare p { font-size: 14.5px; color: var(--ink-soft); margin: 0; }
+  .compare code { font-family: var(--mono); font-size: .88em; color: var(--ink);
+    background: var(--surface-2); padding: 1px 6px; border-radius: 5px; }
+
+  /* layers */
+  .layers { display: flex; flex-direction: column; gap: 12px; }
+  .layer {
+    display: grid; grid-template-columns: 150px 1fr; gap: 0;
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  }
+  .layer .head {
+    background: var(--surface-2); padding: 16px 18px;
+    display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  }
+  .layer .head .n { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 600; }
+  .layer .head .t { font-size: 14px; font-weight: 600; }
+  .layer .head .p { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  .layer .body { background: var(--surface); padding: 14px 18px; display: grid;
+    grid-template-columns: 1fr 1fr; gap: 4px 20px; align-items: center; }
+  .kv { font-size: 13px; color: var(--ink-soft); }
+  .kv b { color: var(--ink); font-weight: 600; }
+  .kv .fw { font-family: var(--mono); color: var(--ink); }
+
+  /* pipeline */
+  .pipe { display: flex; flex-direction: column; gap: 0; }
+  .step { display: grid; grid-template-columns: 44px 1fr; gap: 16px; }
+  .step .rail { display: flex; flex-direction: column; align-items: center; }
+  .step .dot {
+    width: 30px; height: 30px; border-radius: 8px; flex: none;
+    display: grid; place-items: center; font-family: var(--mono); font-weight: 700;
+    font-size: 13px; color: #fff; background: var(--accent);
+  }
+  .step .conn { width: 2px; flex: 1; background: var(--line-strong); min-height: 14px; }
+  .step:last-child .conn { display: none; }
+  .step .content { padding-bottom: 20px; }
+  .step:last-child .content { padding-bottom: 0; }
+  .step h3 { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .step h3 .en { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); font-weight: 500; }
+  .step p { font-size: 14px; color: var(--ink-soft); margin: 2px 0 8px; }
+  .map-inline { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: var(--mono); font-size: 11.5px; padding: 3px 9px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .chip.next { border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+  .chip.spring { border-color: color-mix(in srgb, var(--pass) 45%, transparent); }
+
+  /* mapping table */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); }
+  thead th {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-faint); background: var(--surface-2); font-weight: 600;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(odd) td { background: var(--surface); }
+  tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface) 60%, var(--paper)); }
+  td:first-child { font-family: var(--mono); font-weight: 600; color: var(--accent); font-size: 13px; }
+  td code { font-family: var(--mono); font-size: .9em; color: var(--ink); }
+
+  /* build result */
+  .build {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden;
+  }
+  .build .bar {
+    display: flex; align-items: center; gap: 10px; padding: 12px 18px;
+    background: var(--pass-soft); border-bottom: 1px solid var(--line);
+  }
+  .build .bar .badge {
+    font-family: var(--mono); font-weight: 700; font-size: 12px; color: var(--pass);
+    border: 1.5px solid var(--pass); border-radius: 6px; padding: 2px 8px;
+  }
+  .build .bar .cmd { font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .build ul { list-style: none; margin: 0; padding: 14px 18px; display: grid; gap: 7px; }
+  .build li { font-family: var(--mono); font-size: 13px; color: var(--ink-soft); display: flex; gap: 10px; }
+  .build li::before { content: "✓"; color: var(--pass); font-weight: 700; flex: none; }
+  .build li b { color: var(--ink); }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--ink-faint); }
+  footer code { font-family: var(--mono); }
+
+  @media (max-width: 640px) {
+    .compare { grid-template-columns: 1fr; }
+    .layer { grid-template-columns: 1fr; }
+    .layer .body { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">2nd-brain · llm-wiki compile</div>
+    <h1>LLM Wiki 컴파일 =<br>프론트엔드/백엔드의 &ldquo;빌드&rdquo;</h1>
+    <p class="lede">방금 Orca 페이지로 한 작업은 새로운 개념이 아니에요. <code>next build</code>나 <code>mvn package</code>와 구조가 똑같습니다 &mdash; 소스를 읽어, 규칙에 맞춰, 산출물을 만들고, 검증하는 파이프라인이죠.</p>
+  </header>
+
+  <section>
+    <h2>한 줄 핵심 &mdash; SSR vs SSG</h2>
+    <div class="compare">
+      <div class="card rag">
+        <span class="tag src">RAG ≈ SSR</span>
+        <h3>매 요청마다 다시 렌더</h3>
+        <p>질문이 올 때마다 원본을 처음부터 검색해 답을 조립. Next.js의 <code>getServerSideProps</code>처럼 요청 시점에 매번 계산합니다. 느리고, 매번 새로.</p>
+      </div>
+      <div class="card wiki">
+        <span class="tag pass">LLM Wiki ≈ SSG</span>
+        <h3>미리 컴파일해서 재사용</h3>
+        <p>지식을 <b>한 번</b> 합성해 canonical 페이지로 굳혀둠. <code>next build</code> / <code>getStaticProps</code>처럼 빌드 타임에 미리 만들어 두고 계속 빠르게 재사용합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3계층 = 소스 / 산출물 / 설정</h2>
+    <div class="layers">
+      <div class="layer">
+        <div class="head">
+          <span class="n">Layer 1</span>
+          <span class="t">원본 (immutable)</span>
+          <span class="p">raw/</span>
+        </div>
+        <div class="body">
+          <span class="kv"><span class="fw">Next.js</span> · <b>public/</b> + 외부 API 데이터 (읽기 전용)</span>
+          <span class="kv"><span class="fw">Spring</span> · <b>DB · resources</b> (source of truth, 안 건드림)</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="head">
+          <span class="n">Layer 2</span>
+          <span class="t">컴파일 산출물</span>
+          <span class="p">entities/ concepts/ …</span>
+        </div>
+        <div class="body">
+          <span class="kv"><span class="fw">Next.js</span> · <b>.next/</b> 빌드 출력 (최적화된 결과)</span>
+          <span class="kv"><span class="fw">Spring</span> · <b>target/</b> 컴파일된 Bean</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="head">
+          <span class="n">Layer 3</span>
+          <span class="t">설정 + 매니페스트</span>
+          <span class="p">SCHEMA · index · log</span>
+        </div>
+        <div class="body">
+          <span class="kv"><span class="fw">Next.js</span> · <b>next.config.js</b> + <b>routes-manifest.json</b></span>
+          <span class="kv"><span class="fw">Spring</span> · <b>application.yml</b> + <b>ApplicationContext</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>내가 돌린 빌드 파이프라인 (Orca)</h2>
+    <div class="pipe">
+      <div class="step">
+        <div class="rail"><div class="dot">1</div><div class="conn"></div></div>
+        <div class="content">
+          <h3>정황 파악 <span class="en">orient</span></h3>
+          <p><code>SCHEMA.md → index.md → log.md</code> 읽기. 규칙과 기존 상태부터 로드.</p>
+          <div class="map-inline">
+            <span class="chip next"><b>Next</b> · 빌드 설정 + 캐시/매니페스트 로드</span>
+            <span class="chip spring"><b>Spring</b> · @Configuration 스캔</span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="rail"><div class="dot">2</div><div class="conn"></div></div>
+        <div class="content">
+          <h3>소스 읽기 <span class="en">read raw</span></h3>
+          <p>Orca raw 2개(web + YouTube) 열람. <b>원본은 절대 수정 안 함.</b></p>
+          <div class="map-inline">
+            <span class="chip next"><b>Next</b> · public/ 소스 파일 read-only</span>
+            <span class="chip spring"><b>Spring</b> · DB record 조회 (dirty 없음)</span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="rail"><div class="dot">3</div><div class="conn"></div></div>
+        <div class="content">
+          <h3>합성 = 컴파일 <span class="en">synthesize</span></h3>
+          <p><code>entities/orca.md</code> 생성. frontmatter 9필드 + 출처마커 + wikilink 2개.</p>
+          <div class="map-inline">
+            <span class="chip next"><b>Next</b> · 소스 → .next/ 트랜스파일</span>
+            <span class="chip spring"><b>Spring</b> · @Entity → 컴파일된 Bean</span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="rail"><div class="dot">4</div><div class="conn"></div></div>
+        <div class="content">
+          <h3>매니페스트 갱신 <span class="en">manifest</span></h3>
+          <p><code>index.md</code> 총계 8→9, <code>log.md</code>에 빌드 기록 append.</p>
+          <div class="map-inline">
+            <span class="chip next"><b>Next</b> · routes-manifest.json 갱신 + 빌드 로그</span>
+            <span class="chip spring"><b>Spring</b> · Bean 레지스트리 등록</span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="rail"><div class="dot">5</div></div>
+        <div class="content">
+          <h3>검증 <span class="en">lint</span></h3>
+          <p>계약 위반 0건 확인: 링크·태그·출처·frontmatter·인코딩.</p>
+          <div class="map-inline">
+            <span class="chip next"><b>Next</b> · next lint + tsc --noEmit</span>
+            <span class="chip spring"><b>Spring</b> · mvn verify (checkstyle + test)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>용어 1:1 매핑</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>LLM Wiki</th><th>Next.js</th><th>Spring Boot</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>frontmatter 9필드</td><td><code>interface</code> / TS 타입</td><td><code>@Entity</code> + <code>@NotNull</code></td></tr>
+          <tr><td>[[wikilink]]</td><td><code>import</code> / <code>&lt;Link&gt;</code></td><td><code>@Autowired</code> 주입</td></tr>
+          <tr><td>2링크 최소 규칙</td><td>orphan/dead-code 금지</td><td>고립 Bean 금지</td></tr>
+          <tr><td>^[raw/…] 출처마커</td><td>source map</td><td>추적 가능한 origin</td></tr>
+          <tr><td>tag 택소노미</td><td>허용된 enum/union 타입</td><td>화이트리스트 enum</td></tr>
+          <tr><td>lint 0 issues</td><td>build passed ✓</td><td>BUILD SUCCESS ✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>빌드 결과</h2>
+    <div class="build">
+      <div class="bar">
+        <span class="badge">PASS</span>
+        <span class="cmd">$ llm-wiki compile &mdash;&mdash; 0 issues</span>
+      </div>
+      <ul>
+        <li><b>+1 산출물</b> &mdash; entities/orca.md (첫 entity 페이지)</li>
+        <li><b>매니페스트</b> &mdash; index 총계 8 → 9, 파일 수와 일치</li>
+        <li><b>링크 해석</b> &mdash; 아웃바운드 2개 모두 resolve, broken 0</li>
+        <li><b>출처</b> &mdash; claim 마커 4개 전부 raw 경로로 resolve</li>
+        <li><b>타입/태그</b> &mdash; frontmatter 9필드 OK, 등록 태그만 사용</li>
+        <li><b>인코딩</b> &mdash; UTF-8 · LF · 최종개행 OK (46줄)</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    한 줄 요약 &mdash; <b>raw = 소스, canonical = 빌드 산출물, SCHEMA = 빌드 설정, lint = <code>mvn verify</code>.</b>
+    RAG가 매번 SSR로 렌더한다면, LLM Wiki는 <code>next build</code>로 한 번 컴파일해 재사용하는 SSG입니다.
+  </footer>
+</div>
