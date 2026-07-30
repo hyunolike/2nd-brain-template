@@ -3,9 +3,11 @@
 > Complete catalog of active canonical pages. Each entry is a wikilink followed by
 > a one-line summary, sorted alphabetically within its section.
 >
-> Total pages: 8
+> Total pages: 9
 
 ## Entities
+
+- [[orca]] — 여러 코딩 에이전트를 병렬 worktree로 오케스트레이션하는 Stably의 오픈소스 ADE.
 
 ## Concepts
 

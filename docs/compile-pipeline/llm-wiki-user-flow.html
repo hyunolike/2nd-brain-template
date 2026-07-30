@@ -1,0 +1,217 @@
+<title>LLM Wiki 사용자 플로우</title>
+<style>
+  :root {
+    --paper: #f3f4f7; --surface: #ffffff; --surface-2: #eceef2;
+    --ink: #171a21; --ink-soft: #4a505c; --ink-faint: #79808d;
+    --line: #d8dce3; --line-strong: #c2c8d2;
+    --human: #5b3df5; --human-soft: #ede9ff;   /* 사람 lane */
+    --agent: #2563a8; --agent-soft: #e2edf8;    /* 에이전트 lane */
+    --pass: #1f8a4c; --pass-soft: #e0f2e6;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0e1016; --surface: #171a22; --surface-2: #1e222c;
+      --ink: #e9ebf0; --ink-soft: #a8aebc; --ink-faint: #767d8c;
+      --line: #2a2f3a; --line-strong: #363c48;
+      --human: #9b86ff; --human-soft: #241d3f;
+      --agent: #6fa8e0; --agent-soft: #16273a;
+      --pass: #5ec27f; --pass-soft: #122a1c;
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #f3f4f7; --surface: #ffffff; --surface-2: #eceef2;
+    --ink: #171a21; --ink-soft: #4a505c; --ink-faint: #79808d;
+    --line: #d8dce3; --line-strong: #c2c8d2;
+    --human: #5b3df5; --human-soft: #ede9ff;
+    --agent: #2563a8; --agent-soft: #e2edf8;
+    --pass: #1f8a4c; --pass-soft: #e0f2e6;
+  }
+  :root[data-theme="dark"] {
+    --paper: #0e1016; --surface: #171a22; --surface-2: #1e222c;
+    --ink: #e9ebf0; --ink-soft: #a8aebc; --ink-faint: #767d8c;
+    --line: #2a2f3a; --line-strong: #363c48;
+    --human: #9b86ff; --human-soft: #241d3f;
+    --agent: #6fa8e0; --agent-soft: #16273a;
+    --pass: #5ec27f; --pass-soft: #122a1c;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 56px 24px 80px; }
+
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--human); font-weight: 600; }
+  h1 { font-family: var(--mono); font-weight: 700; font-size: clamp(28px, 5vw, 42px);
+    line-height: 1.12; letter-spacing: -.01em; margin: 12px 0 14px; text-wrap: balance; }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 62ch; margin: 0; }
+
+  /* legend */
+  .legend { display: flex; gap: 20px; margin-top: 26px; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-soft); }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+  .swatch.h { background: var(--human); }
+  .swatch.a { background: var(--agent); }
+
+  section { margin-top: 44px; }
+  h2 { font-family: var(--mono); font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }
+  h2::before { content: ""; width: 22px; height: 2px; background: var(--human); border-radius: 2px; }
+
+  /* flow */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .stage { display: grid; grid-template-columns: 46px 1fr; gap: 16px; }
+  .stage .rail { display: flex; flex-direction: column; align-items: center; }
+  .stage .num { width: 32px; height: 32px; border-radius: 9px; flex: none; display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 700; font-size: 14px; color: #fff; background: var(--ink); }
+  .stage .conn { width: 2px; flex: 1; background: var(--line-strong); min-height: 16px; }
+  .stage:last-child .conn { display: none; }
+  .stage .body { padding-bottom: 20px; }
+  .stage:last-child .body { padding-bottom: 0; }
+
+  .stage-title { font-size: 18px; font-weight: 700; margin: 4px 0 4px; letter-spacing: -.01em; }
+  .stage-title .en { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); font-weight: 500; margin-left: 8px; }
+
+  .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+  .lane { border-radius: 11px; padding: 13px 15px; border: 1px solid var(--line); background: var(--surface); }
+  .lane.human { border-left: 3px solid var(--human); }
+  .lane.agent { border-left: 3px solid var(--agent); }
+  .lane .who { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; font-weight: 600;
+    text-transform: uppercase; margin-bottom: 6px; }
+  .lane.human .who { color: var(--human); }
+  .lane.agent .who { color: var(--agent); }
+  .lane p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .lane code { font-family: var(--mono); font-size: .87em; color: var(--ink);
+    background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .lane .none { color: var(--ink-faint); font-style: italic; }
+
+  .loopback { display: flex; align-items: center; gap: 8px; margin-top: 8px;
+    font-family: var(--mono); font-size: 12px; color: var(--pass); font-weight: 600; }
+  .loopback::before { content: "↻"; font-size: 15px; }
+
+  /* callout */
+  .callout { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--pass);
+    border-radius: 11px; padding: 18px 20px; }
+  .callout h3 { margin: 0 0 6px; font-size: 16px; }
+  .callout p { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+  .callout code { font-family: var(--mono); font-size: .88em; background: var(--surface-2);
+    padding: 1px 6px; border-radius: 5px; color: var(--ink); }
+
+  footer { margin-top: 52px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--ink-faint); }
+  footer b { color: var(--ink-soft); }
+
+  @media (max-width: 620px) { .lanes { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">2nd-brain · user flow</div>
+    <h1>사람은 큐레이션,<br>에이전트는 컴파일</h1>
+    <p class="lede">LLM Wiki는 자동 지식 생성기가 아니에요. <b>사람이 자료를 고르고 방향을 정하면, 에이전트가 요약·연결·정리·검증을 맡는</b> 분업 구조입니다. 아래는 한 자료가 위키에 들어와 재사용되기까지의 전체 흐름이에요.</p>
+    <div class="legend">
+      <span><span class="swatch h"></span> 사람 (curator · director)</span>
+      <span><span class="swatch a"></span> 에이전트 (summarize · link · file · verify)</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>한 자료의 라이프사이클</h2>
+    <div class="flow">
+
+      <div class="stage">
+        <div class="rail"><div class="num">1</div><div class="conn"></div></div>
+        <div class="body">
+          <div class="stage-title">발견 &amp; 캡처 <span class="en">capture</span></div>
+          <div class="lanes">
+            <div class="lane human"><div class="who">사람</div>
+              <p>흥미로운 글·영상·논문 발견 → &ldquo;이거 위키에 넣어줘&rdquo;</p></div>
+            <div class="lane agent"><div class="who">에이전트</div>
+              <p>원본을 <code>raw/</code>에 저장 + 출처·해시 기록. <b>이후 절대 수정 안 함(immutable).</b></p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="rail"><div class="num">2</div><div class="conn"></div></div>
+        <div class="body">
+          <div class="stage-title">컴파일 <span class="en">compile</span></div>
+          <div class="lanes">
+            <div class="lane human"><div class="who">사람</div>
+              <p class="none">개입 없음 — 방향만 줬으면 맡겨둠</p></div>
+            <div class="lane agent"><div class="who">에이전트</div>
+              <p>소스 읽고 canonical 페이지 합성, <code>[[링크]]</code>·태그·출처 부착, <code>index</code>/<code>log</code> 갱신</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="rail"><div class="num">3</div><div class="conn"></div></div>
+        <div class="body">
+          <div class="stage-title">검토 &amp; 승인 <span class="en">review</span></div>
+          <div class="lanes">
+            <div class="lane human"><div class="who">사람</div>
+              <p>결과 확인, <code>confidence</code>·모순 플래그 점검, 개인 해석 추가 후 승인</p></div>
+            <div class="lane agent"><div class="who">에이전트</div>
+              <p>낮은 신뢰도·모순 페이지를 리뷰용으로 표면화</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="rail"><div class="num">4</div><div class="conn"></div></div>
+        <div class="body">
+          <div class="stage-title">질문 = 재사용 <span class="en">query</span></div>
+          <div class="lanes">
+            <div class="lane human"><div class="who">사람</div>
+              <p>도메인 질문을 던짐 (몇 주 뒤라도)</p></div>
+            <div class="lane agent"><div class="who">에이전트</div>
+              <p>원본 재검색 없이 위키에서 즉답. &ldquo;<code>[[page-a]]</code>와 <code>[[page-b]]</code> 기준…&rdquo;</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="rail"><div class="num">5</div><div class="conn"></div></div>
+        <div class="body">
+          <div class="stage-title">파일링 = 복리 <span class="en">file</span></div>
+          <div class="lanes">
+            <div class="lane human"><div class="who">사람</div>
+              <p>&ldquo;이 답변 저장해둬&rdquo; (다시 만들기 아까운 것만)</p></div>
+            <div class="lane agent"><div class="who">에이전트</div>
+              <p>가치 있는 답변을 <code>queries/</code>에 저장 → 다음 질문의 재료가 됨</p></div>
+          </div>
+          <div class="loopback">답변이 다시 위키가 되어 지식이 쌓인다 (2단계로 환류)</div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="rail"><div class="num">6</div></div>
+        <div class="body">
+          <div class="stage-title">유지보수 <span class="en">lint</span></div>
+          <div class="lanes">
+            <div class="lane human"><div class="who">사람</div>
+              <p>주기적으로 &ldquo;위키 점검해줘&rdquo;</p></div>
+            <div class="lane agent"><div class="who">에이전트</div>
+              <p>고립 페이지·깨진 링크·오래된 내용·모순을 리포트</p></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>왜 이렇게 나누나</h2>
+    <div class="callout">
+      <h3>사람 = 판단, 에이전트 = 노동</h3>
+      <p>무엇이 중요한지, 무엇을 믿을지는 <b>사람만</b> 안다. 요약·교차참조·일관성 유지·검증 같은 반복 노동은 에이전트가 지치지 않고 한다. 이 경계가 흐려지면 위키는 <b>중복 페이지 더미</b>로 퇴화한다 &mdash; 그래서 <code>SCHEMA.md</code>라는 계약이 에이전트의 자유를 제한하는 것.</p>
+    </div>
+  </section>
+
+  <footer>
+    이 플로우의 2단계(컴파일) 내부 동작은 <b>&ldquo;LLM Wiki 컴파일 = 빌드 파이프라인&rdquo;</b> 문서에서 <code>next build</code> / <code>mvn package</code> 비유로 자세히 다룬다.
+  </footer>
+</div>
